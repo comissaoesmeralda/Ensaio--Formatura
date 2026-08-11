@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agendamento — Ensaio de Formatura</title>
+<style>
+:root{--bg:#faf8f5;--card:#fff;--ink:#24201d;--muted:#766f69;--accent:#b89563;--accent2:#8d6d43;--line:#e8e1d9;--ok:#2f7d52;--off:#aaa29a}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
+.wrap{max-width:900px;margin:auto;padding:28px 18px 50px}.hero{text-align:center;padding:28px 10px 20px}
+.kicker{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);font-weight:700}
+h1{font-family:Georgia,serif;font-size:38px;margin:10px 0 8px}.hero p{color:var(--muted);margin:0 auto;max-width:600px;line-height:1.5}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 8px 30px rgba(40,30,20,.05);margin-top:18px}
+label{display:block;font-size:14px;font-weight:700;margin-bottom:8px}input,select{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:11px;font-size:15px;background:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+.slot{border:1px solid var(--line);background:#fff;border-radius:12px;padding:13px 8px;text-align:center;cursor:pointer;transition:.15s}.slot:hover{border-color:var(--accent)}.slot strong{display:block;font-size:16px}.slot small{color:var(--muted)}.slot.full{opacity:.45;cursor:not-allowed;text-decoration:line-through}.slot.selected{border:2px solid var(--accent2);background:#fbf5eb}
+button{width:100%;border:0;border-radius:12px;padding:15px;background:var(--ink);color:white;font-size:16px;font-weight:700;cursor:pointer;margin-top:18px}button:disabled{opacity:.5;cursor:not-allowed}
+.status{text-align:center;margin-top:12px;color:var(--muted);min-height:22px}.success{color:var(--ok);font-weight:700}.error{color:#a23b32;font-weight:700}
+.note{font-size:13px;color:var(--muted);line-height:1.45;margin-top:14px}
+@media(max-width:650px){h1{font-size:30px}.grid{grid-template-columns:1fr}.slots{grid-template-columns:repeat(2,1fr)}.wrap{padding:16px 12px 40px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="kicker">Formatura</div>
+    <h1>Agendamento do ensaio</h1>
+    <p>Escolha a data e o horário do seu ensaio fotográfico. Cada horário comporta até <b>10 pessoas</b>.</p>
+  </header>
+
+  <section class="card">
+    <div class="grid">
+      <div>
+        <label for="date">Data</label>
+        <select id="date">
+          <option value="2026-09-20">20 de setembro de 2026</option>
+          <option value="2026-09-29">29 de setembro de 2026</option>
+        </select>
+      </div>
+      <div>
+        <label for="name">Nome completo</label>
+        <input id="name" maxlength="100" placeholder="Digite seu nome">
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <label>Escolha o horário</label>
+      <div id="slots" class="slots"></div>
+    </div>
+
+    <button id="submit" disabled>Confirmar meu horário</button>
+    <div id="status" class="status"></div>
+    <div class="note">Os horários lotados ficam indisponíveis automaticamente. A confirmação é registrada no sistema para que todas as pessoas vejam a mesma disponibilidade.</div>
+  </section>
+</div>
+
+<script>
+/* Cole aqui a URL da implantação do Google Apps Script. */
+const API_URL = "https://script.google.com/macros/s/AKfycby0PvA1ExdMNh90je2I_BVuU51arA-3z6tjR9SkdwuhcFRmeKVbm7Tt8faklqkwyUo/exec";
+
+const dates = {
+  "2026-09-20": "20 de setembro de 2026",
+  "2026-09-29": "29 de setembro de 2026"
+};
+const hours = [9,10,11,12,13,14,15,16];
+let selectedHour = null;
+let availability = {};
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,"0");
+
+async function loadAvailability(){
+  $("status").textContent = "Carregando horários…";
+  if(API_URL.startsWith("COLE_AQUI")){
+    $("status").textContent = "O site está pronto. Falta conectar a URL do banco de agendamentos.";
+    renderSlots({});
+    return;
+  }
+  try{
+    const r = await fetch(API_URL + "?action=availability&date=" + encodeURIComponent($("date").value));
+    const data = await r.json();
+    if(!data.ok) throw new Error(data.error || "Erro");
+    availability = data.availability || {};
+    renderSlots(availability);
+    $("status").textContent = "";
+  }catch(e){
+    $("status").className="status error";
+    $("status").textContent="Não foi possível carregar os horários. Atualize a página.";
+  }
+}
+
+function renderSlots(a){
+  const box = $("slots"); box.innerHTML="";
+  selectedHour = null; $("submit").disabled=true;
+  hours.forEach(h=>{
+    const count = Number(a[h] || 0), full = count >= 10;
+    const el = document.createElement("div");
+    el.className = "slot" + (full ? " full" : "");
+    el.innerHTML = `<strong>${pad(h)}:00</strong><small>${full ? "Lotado" : `${count}/10 vagas`}</small>`;
+    if(!full){
+      el.onclick=()=>{
+        document.querySelectorAll(".slot").forEach(x=>x.classList.remove("selected"));
+        el.classList.add("selected"); selectedHour=h; $("submit").disabled=false;
+      };
+    }
+    box.appendChild(el);
+  });
+}
+
+$("date").addEventListener("change", loadAvailability);
+$("submit").addEventListener("click", async()=>{
+  const name=$("name").value.trim(), date=$("date").value;
+  if(!name || selectedHour===null) return;
+  $("submit").disabled=true; $("status").className="status"; $("status").textContent="Confirmando…";
+  try{
+    const r=await fetch(API_URL,{
+      method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"book",date,name,hour:selectedHour})
+    });
+    const data=await r.json();
+    if(!data.ok) throw new Error(data.error || "Esse horário acabou de lotar.");
+    $("status").className="status success";
+    $("status").textContent=`Agendamento confirmado para ${dates[date]}, às ${pad(selectedHour)}:00.`;
+    $("name").value="";
+    await loadAvailability();
+  }catch(e){
+    $("status").className="status error"; $("status").textContent=e.message;
+    await loadAvailability();
+  }finally{
+    $("submit").disabled = selectedHour===null;
+  }
+});
+
+renderSlots({});
+loadAvailability();
+</script>
+</body>
+</html>
