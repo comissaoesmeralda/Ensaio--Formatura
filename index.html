@@ -60,7 +60,6 @@ button{width:100%;border:0;border-radius:12px;padding:15px;background:var(--ink)
         </select>
         <label for="name">Nome completo</label>
         <input id="name" maxlength="100" placeholder="Digite seu nome">
-   <input id="name" maxlength="100" placeholder="Digite seu número">
       </div>
       <div>
     <label for="name">Telefone para contato</label>
@@ -89,7 +88,10 @@ const dates = {
   "2026-09-19": "19 de setembro de 2026",
   "2026-09-20": "20 de setembro de 2026"
 };
-const hours = [9,10,11,12,14,15];
+const hoursByDate = {
+  "2026-09-19":[9,10,11,12,14,15,16],
+  "2026-09-20":[9,10,11,12,14,15]
+};
 let selectedHour = null;
 let availability = {};
 
@@ -119,7 +121,7 @@ async function loadAvailability(){
 function renderSlots(a){
   const box = $("slots"); box.innerHTML="";
   selectedHour = null; $("submit").disabled=true;
-  hours.forEach(h=>{
+  const hours = hoursByDate[$("date").value] || [];hours.forEach(h=>{
     const count = Number(a[h] || 0), full = count >= 10;
     const el = document.createElement("div");
     el.className = "slot" + (full ? " full" : "");
