@@ -63,9 +63,9 @@ button{width:100%;border:0;border-radius:12px;padding:15px;background:var(--ink)
       </div>
       <div>
     <label for="name">Telefone para contato</label>
-   <input id="name" maxlength="100" placeholder="Digite seu número">
+   <input id="telefone" maxlength="100" placeholder="Digite seu número">
         <label for="name">Curso</label>
-        <input id="name" maxlength="100" placeholder="Digite seu curso">
+        <input id="curso" maxlength="100" placeholder="Digite seu curso">
       </div>
     </div>
 
@@ -138,13 +138,14 @@ function renderSlots(a){
 
 $("date").addEventListener("change", loadAvailability);
 $("submit").addEventListener("click", async()=>{
-  const name=$("name").value.trim(), date=$("date").value;
+  const name=$("name").value.trim(),date=$("date").value;
+   const telefone=$("telefone").value.trim(),curso=$("curso").value;
   if(!name || selectedHour===null) return;
   $("submit").disabled=true; $("status").className="status"; $("status").textContent="Confirmando…";
   try{
     const r=await fetch(API_URL,{
       method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
-      body:JSON.stringify({action:"book",date,name,hour:selectedHour})
+      body:JSON.stringify({action:"book",date,name,telefone,curso,hour:selectedHour})
     });
     const data=await r.json();
     if(!data.ok) throw new Error(data.error || "Esse horário acabou de lotar.");
